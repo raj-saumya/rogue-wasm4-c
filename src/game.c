@@ -1,5 +1,6 @@
 #include "types.h"
 #include "wasm4.h"
+#include <stdint.h>
 #include <stdlib.h>
 
 const uint8_t START_SCREEN_SPRITE[6400] = {
@@ -540,6 +541,7 @@ const uint8_t START_SCREEN_SPRITE[6400] = {
 
 void Game_init(GameContext *gc) {
   gc->frame_count = 0;
+  gc->score = 0;
   gc->screen_state = GAME_START_SCREEN;
   gc->player.health = 100;
   Player_init(gc);
@@ -560,10 +562,9 @@ void Game_startScreen(GameContext *gc, uint8_t gamepad) {
   blit(START_SCREEN_SPRITE, 0, 0, 320, 200, 0);
 
   *DRAW_COLORS = 3;
-  text("Welcome to", 40, 10);
-  text("The Rogue", 40, 30);
-  text("Of", 68, 42);
-  text("Abyss", 58, 52);
+  text("The Rogue", 40, 20);
+  text("Of", 68, 32);
+  text("Abyss", 58, 42);
   text("Press \x81 to start", 16, 130);
 
   Player_render(gc);
@@ -576,6 +577,7 @@ void Game_spawnDemons(GameContext *gc) {
     for (int i = 0; i < DEMON_COUNT; i++) {
       if (!gc->demons[i].is_alive) {
         gc->demons[i].is_alive = true;
+        gc->demons[i].health = 2;
         if (rand() % 2 == 0) {
           gc->demons[i].pos_x = rand() % SCREEN_SIZE;
           gc->demons[i].pos_y = (rand() % 2 == 0) ? 0 : SCREEN_SIZE;
@@ -599,14 +601,14 @@ void Game_PlayerHealthStatus(GameContext *gc) {
   }
 
   // health bar container
-  *DRAW_COLORS = 0x31;
-  int32_t size = (int32_t)(SCREEN_SIZE - 8);
-  rect(4, size, (uint32_t)size, 3);
+  int32_t size = (int32_t)(DEMON_SPRITE_FRAME_SIZE);
+  int32_t x = gc->player.pos_x;
+  int32_t y = gc->player.pos_y + DEMON_SPRITE_H + 2;
 
-  uint32_t health_width = (uint32_t)((gc->player.health * size - 2) / 100);
+  uint32_t health_width = (uint32_t)((gc->player.health * size) / 100);
 
   *DRAW_COLORS = 3;
-  rect(5, size, health_width, 2);
+  rect(x, y, health_width, 1);
 }
 
 void Game_progressScreen(GameContext *gc, uint8_t gamepad) {
@@ -627,6 +629,8 @@ void Game_progressScreen(GameContext *gc, uint8_t gamepad) {
 
   Game_spawnDemons(gc);
   Game_PlayerHealthStatus(gc);
+  Player_update_projectiles(gc);
+  Player_attacks(gc);
 }
 
 void Game_overScreen(GameContext *gc, uint8_t gamepad) {
@@ -644,7 +648,34 @@ void Game_overScreen(GameContext *gc, uint8_t gamepad) {
   // scorecard
   text("Level: 4", 48, 40);
   text("Time Alive: 0:00", 18, 55);
-  text("Demons Slayed: 33", 12, 70);
+
+  // Build "Demons Slayed: X" string
+  char slayed_str[32] = "Demons Slayed: ";
+  int s = (int)gc->score;
+  char num[12];
+  int idx = 0;
+  if (s == 0) {
+    num[idx++] = '0';
+  } else {
+    while (s > 0 && idx < 10) {
+      num[idx++] = (char)((s % 10) + '0');
+      s /= 10;
+    }
+  }
+  // Reverse num
+  for (int j = 0; j < idx / 2; j++) {
+    char tmp = num[j];
+    num[j] = num[idx - 1 - j];
+    num[idx - 1 - j] = tmp;
+  }
+  num[idx] = '\0';
+  // Append to slayed_str
+  int len = 15; // length of "Demons Slayed: "
+  for (int j = 0; j <= idx; j++) {
+    slayed_str[len + j] = num[j];
+  }
+  text(slayed_str, 12, 70);
+
   text("Buffs: 8", 48, 85);
 
   text("Press \x81 to restart", 8, 130);

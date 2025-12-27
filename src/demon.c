@@ -71,7 +71,7 @@ void Demon_render(Demon *demon, uint32_t frame_count) {
       (frame_count / DEMON_TYPE_A_ANIM_SPEED) % DEMON_TYPE_A_FRAME_COUNT;
   uint32_t src_x = anim_frame * DEMON_TYPE_A_FRAME_SIZE;
 
-  blitSub(DEMON_TYPE_A_SPRITE, demon->pos_x, demon->pos_y,
+  blitSub(DEMON_TYPE_B_SPRITE, demon->pos_x, demon->pos_y,
           DEMON_TYPE_A_FRAME_SIZE, DEMON_TYPE_A_H, src_x, 0, DEMON_TYPE_A_W,
           DEMON_TYPE_A_DIR);
 }
@@ -90,8 +90,11 @@ bool check_player_collision(Demon *demon, Player *player) {
   int px = player->pos_x;
   int py = player->pos_y;
 
-  if (dx >= px && dx <= px + DEMON_SPRITE_FRAME_SIZE && dy >= py &&
-      dy <= py + DEMON_SPRITE_H) {
+  // Proper AABB collision between demon and player hitboxes
+  if (dx < px + DEMON_SPRITE_FRAME_SIZE &&
+      dx + DEMON_HITBOX_W > px &&
+      dy < py + DEMON_SPRITE_H &&
+      dy + DEMON_HITBOX_H > py) {
     return true;
   }
 

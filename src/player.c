@@ -1,7 +1,9 @@
 #include "types.h"
 #include "wasm4.h"
 
+#include <math.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 const uint8_t DEMON_SPRITE[864] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -68,7 +70,7 @@ const uint8_t DEMON_SPRITE[864] = {
     0x00, 0xaa, 0xbd, 0x50, 0x40, 0x00, 0x00, 0x2a, 0xbd, 0x50, 0x40, 0x00,
     0x00, 0x2a, 0xbd, 0x50, 0x40, 0x00, 0x00, 0x2a, 0xbd, 0x50, 0x40, 0x00,
     0x00, 0xaa, 0x7f, 0x54, 0x40, 0x00, 0x00, 0xaa, 0xbf, 0x50, 0x40, 0x00,
-    0x02, 0xaa, 0xff, 0x54, 0x40, 0x00, 0x00, 0xaa, 0xbf, 0x54, 0x40, 0x00,
+    0x00, 0xaa, 0xff, 0x54, 0x40, 0x00, 0x00, 0xaa, 0xbf, 0x54, 0x40, 0x00,
     0x00, 0xaa, 0xbf, 0x54, 0x40, 0x00, 0x00, 0xaa, 0x7f, 0x54, 0x40, 0x00,
     0x00, 0xaa, 0x7f, 0xd4, 0x40, 0x00, 0x02, 0xaa, 0xbf, 0xd0, 0x40, 0x00,
     0x0a, 0xab, 0xff, 0xd4, 0x00, 0x00, 0x02, 0xaa, 0xbf, 0xd4, 0x00, 0x00,
@@ -77,11 +79,39 @@ const uint8_t DEMON_SPRITE[864] = {
     0x2a, 0xaf, 0xff, 0xd4, 0x00, 0x00, 0x2a, 0xaa, 0xbf, 0xd4, 0x00, 0x00,
     0x0a, 0xaa, 0xbf, 0xf4, 0x00, 0x00, 0x02, 0xaa, 0x7f, 0xd4, 0x40, 0x00};
 
+#define PROJECTILE_SPRITE_W 40
+#define PROJECTILE_SPRITE_H 8
+#define PROJECTILE_SPRITE_FRAME_SIZE 8
+#define PROJECTILE_SPRITE_FRAME_COUNT 4
+#define PROJECTILE_SPRITE_ANIM_SPEED 10
+#define PROJECTILE_SPRITE_DIR BLIT_2BPP
+
+const uint8_t PROJECTILE_SPRITE[80] = {
+    0xfa, 0xaf, 0xfa, 0xaf, 0xfa, 0xaf, 0xf8, 0x2f, 0xfa, 0xaf, 0xe9, 0x6b,
+    0xe5, 0x5b, 0xe4, 0x1b, 0xe4, 0x1b, 0xe5, 0x5b, 0xa5, 0x5a, 0x94, 0x16,
+    0x50, 0x05, 0x90, 0x06, 0x94, 0x16, 0x94, 0x16, 0x50, 0x05, 0x80, 0x02,
+    0x40, 0x01, 0x90, 0x06, 0x94, 0x16, 0x50, 0x05, 0x80, 0x02, 0x40, 0x01,
+    0x90, 0x06, 0xa5, 0x5a, 0x94, 0x16, 0x50, 0x05, 0x90, 0x06, 0x94, 0x16,
+    0xe9, 0x6b, 0xe5, 0x5b, 0xe4, 0x1b, 0xe4, 0x1b, 0xe5, 0x5b, 0xfa, 0xaf,
+    0xfa, 0xaf, 0xfa, 0xaf, 0xf8, 0x2f, 0xfa, 0xaf};
+
 void Player_init(GameContext *gc) {
   gc->player.pos_x = SCREEN_SIZE / 2 - DEMON_SPRITE_FRAME_SIZE / 2;
   gc->player.pos_y = SCREEN_SIZE / 2 - DEMON_SPRITE_H / 2;
   gc->player.dir = BLIT_2BPP;
   gc->player.health = 100;
+
+  for (int i = 0; i < WEAPON_POOL_SIZE; i++) {
+    gc->weapons_pool[i].is_active = false;
+  }
+
+  gc->weapons_pool[0].is_active = true;
+  gc->weapons_pool[0].projectile_count = 3;
+  gc->weapons_pool[0].cooldown_frames = 300;
+
+  for (int i = 0; i < PROJECTILE_POOL_SIZE; i++) {
+    gc->projectiles_pool[i].is_active = false;
+  }
 }
 
 void Player_render(GameContext *gc) {
@@ -93,7 +123,7 @@ void Player_render(GameContext *gc) {
 
   blitSub(DEMON_SPRITE, gc->player.pos_x, gc->player.pos_y,
           DEMON_SPRITE_FRAME_SIZE, DEMON_SPRITE_H, src_x, 0, DEMON_SPRITE_W,
-          gc->player.dir);
+          PROJECTILE_SPRITE_DIR);
 }
 
 void Player_move(GameContext *gc, int dx, int dy) {
@@ -101,4 +131,163 @@ void Player_move(GameContext *gc, int dx, int dy) {
   gc->player.pos_y += dy;
 
   Player_render(gc);
+}
+
+void render_projectiles(GameContext *gc) {
+  for (int i = 0; i < PROJECTILE_POOL_SIZE; i++) {
+    Projectile *projectile = &gc->projectiles_pool[i];
+    if (projectile->is_active) {
+      *DRAW_COLORS = 0x323;
+
+      uint32_t anim_frame = (gc->frame_count / PROJECTILE_SPRITE_ANIM_SPEED) %
+                            PROJECTILE_SPRITE_FRAME_COUNT;
+      uint32_t src_x = anim_frame * PROJECTILE_SPRITE_FRAME_SIZE;
+
+      blitSub(PROJECTILE_SPRITE, (int32_t)projectile->x, (int32_t)projectile->y,
+              PROJECTILE_SPRITE_FRAME_SIZE, PROJECTILE_SPRITE_H, src_x, 0,
+              PROJECTILE_SPRITE_W, gc->player.dir);
+    }
+  }
+}
+
+void Player_update_projectiles(GameContext *gc) {
+  for (int i = 0; i < PROJECTILE_POOL_SIZE; i++) {
+    Projectile *projectile = &gc->projectiles_pool[i];
+    if (projectile->is_active) {
+      projectile->life_time--;
+      projectile->x += projectile->vx;
+      projectile->y += projectile->vy;
+
+      // Collision detection with demons
+      for (int j = 0; j < DEMON_COUNT; j++) {
+        Demon *demon = &gc->demons[j];
+        if (demon->is_alive) {
+          // Simple AABB collision (cast demon positions to float)
+          if (projectile->x < (float)(demon->pos_x + DEMON_HITBOX_W) &&
+              projectile->x + PROJECTILE_SPRITE_FRAME_SIZE >
+                  (float)demon->pos_x &&
+              projectile->y < (float)(demon->pos_y + DEMON_HITBOX_H) &&
+              projectile->y + PROJECTILE_SPRITE_H > (float)demon->pos_y) {
+
+            // Hit!
+            demon->health--;
+            if (demon->health <= 0) {
+              demon->is_alive = false;
+              gc->score++;
+            }
+
+            // Deactivate projectile on hit
+            projectile->is_active = false;
+            break;
+          }
+        }
+      }
+
+      // Deactivate if out of bounds or lifetime ends
+      if (projectile->is_active &&
+          (projectile->life_time <= 0 || projectile->x < -10 ||
+           projectile->x > SCREEN_SIZE + 10 || projectile->y < -10 ||
+           projectile->y > SCREEN_SIZE + 10)) {
+        projectile->is_active = false;
+      }
+    }
+  }
+}
+
+typedef struct {
+  int index;
+  float distSq;
+} DemonDist;
+
+int get_sorted_demon_indices(GameContext *gc, int *indices) {
+  int count = 0;
+  DemonDist dists[DEMON_COUNT];
+
+  for (int i = 0; i < DEMON_COUNT; i++) {
+    if (gc->demons[i].is_alive) {
+      float dx = (float)(gc->demons[i].pos_x - gc->player.pos_x);
+      float dy = (float)(gc->demons[i].pos_y - gc->player.pos_y);
+      dists[count].index = i;
+      dists[count].distSq = dx * dx + dy * dy;
+      count++;
+    }
+  }
+
+  // Bubble sort for small number of demons
+  for (int i = 0; i < count - 1; i++) {
+    for (int j = 0; j < count - i - 1; j++) {
+      if (dists[j].distSq > dists[j + 1].distSq) {
+        DemonDist temp = dists[j];
+        dists[j] = dists[j + 1];
+        dists[j + 1] = temp;
+      }
+    }
+  }
+
+  for (int i = 0; i < count; i++) {
+    indices[i] = dists[i].index;
+  }
+  return count;
+}
+
+void Player_attacks(GameContext *gc) {
+  int demon_indices[DEMON_COUNT];
+  int active_demon_count = get_sorted_demon_indices(gc, demon_indices);
+
+  for (int i = 0; i < WEAPON_POOL_SIZE; i++) {
+    Weapon *weapon = &gc->weapons_pool[i];
+
+    if (!weapon->is_active) {
+      continue;
+    }
+
+    uint32_t cooldown_frames = (uint32_t)weapon->cooldown_frames;
+    if (gc->frame_count % cooldown_frames != 0) {
+      continue;
+    }
+
+    int projectiles_needed = weapon->projectile_count;
+    int fired_count = 0;
+
+    for (int k = 0; k < PROJECTILE_POOL_SIZE; k++) {
+      if (projectiles_needed <= 0) {
+        break;
+      }
+
+      Projectile *projectile = &gc->projectiles_pool[k];
+      if (!projectile->is_active) {
+        projectile->is_active = true;
+        projectile->life_time = 240; // 2 seconds
+        projectile->x = (float)gc->player.pos_x;
+        projectile->y = (float)gc->player.pos_y;
+
+        float speed = 0.2f;        // Velocity magnitude
+        float vx = 0, vy = -speed; // Default UP if no targets
+
+        if (active_demon_count > 0) {
+          int target_idx = demon_indices[fired_count % active_demon_count];
+          Demon *target = &gc->demons[target_idx];
+
+          float dx = (float)(target->pos_x - gc->player.pos_x);
+          float dy = (float)(target->pos_y - gc->player.pos_y);
+          float angle = atan2f(dy, dx);
+
+          // Snap to 8 directions (PI/4 steps)
+          float step = (float)(M_PI / 4.0);
+          float snapped = roundf(angle / step) * step;
+
+          vx = cosf(snapped) * speed;
+          vy = sinf(snapped) * speed;
+        }
+
+        projectile->vx = vx;
+        projectile->vy = vy;
+
+        projectiles_needed--;
+        fired_count++;
+      }
+    }
+  }
+
+  render_projectiles(gc);
 }
