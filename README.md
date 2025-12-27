@@ -1,33 +1,57 @@
-# rogue-wasm4-c
+# The Rogue of Abyss
 
-A game written in C for the [WASM-4](https://wasm4.org) fantasy console.
+> ⚠️ **Disclaimer**: made just for fun! code is not subject to review lol. :p.
 
-## Building
+A simple roguelike game built in C for the [WASM-4](https://wasm4.org) fantasy console.
 
-Build the cart by running:
+## 🎮 The Game
 
-```shell
+Navigate through the abyss, defeat enemies, and survive as long as you can.
+
+**Controls:**
+
+- **Arrow Keys** — Move the rogue
+- **Z** — Special action / Start
+
+## 📁 Project Structure
+
+```
+src/
+├── main.c              # Entry point
+├── wasm4.h             # WASM-4 API header
+├── assets/             # Sprites & audio
+│   ├── sprites.c/h
+│   └── audio.c/h
+├── core/
+│   ├── game.c
+│   ├── config.h
+│   └── types.h
+├── entities/
+│   ├── rogue.c/h
+│   └── enemy.c/h
+└── ui/
+    ├── screens.h
+    ├── screen_start.c
+    ├── screen_playing.c
+    ├── screen_buff.c
+    └── screen_gameover.c
+```
+
+## 🛠️ Build & Run
+
+**Prerequisites:** [WASM-4 CLI](https://wasm4.org/docs/getting-started/setup?code-lang=c#quickstart) and a C compiler (clang/gcc with wasm target).
+
+```bash
+# Build
 make
-```
 
-Then run it with:
-
-```shell
+# Run locally
 w4 run build/cart.wasm
+
+# Bundle for web (generates index.html)
+w4 bundle build/cart.wasm --title "The Rogue Of Abyss" --html index.html
 ```
 
-For more info about setting up WASM-4, see the [quickstart guide](https://wasm4.org/docs/getting-started/setup?code-lang=c#quickstart).
+## 📚 Resources
 
-## Links
-
-- [Documentation](https://wasm4.org/docs): Learn more about WASM-4.
-- [Snake Tutorial](https://wasm4.org/docs/tutorials/snake/goal): Learn how to build a complete game
-  with a step-by-step tutorial.
-- [GitHub](https://github.com/aduros/wasm4): Submit an issue or PR. Contributions are welcome!
-
-
-unset SDKROOT
-unset CPATH
-unset C_INCLUDE_PATH
-unset CPLUS_INCLUDE_PATH
-unset OBJC_INCLUDE_PATH
+- [WASM-4 Docs](https://wasm4.org/docs)
