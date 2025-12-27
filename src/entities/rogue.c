@@ -1,4 +1,5 @@
 #include "rogue.h"
+#include "../assets/audio.h"
 #include "../assets/sprites.h"
 #include "../core/config.h"
 #include "../wasm4.h"
@@ -117,6 +118,9 @@ void Rogue_update_projectiles(GameContext *gc) {
               enemy->is_alive = false;
               gc->score++;
               gc->kills_this_level++;
+              audio_enemy_death();
+            } else {
+              audio_enemy_hit();
             }
 
             proj->is_active = false;
@@ -228,6 +232,10 @@ void Rogue_fire_weapons(GameContext *gc) {
 
         projectiles_needed--;
         fired_count++;
+
+        if (fired_count == 1) {
+          audio_player_attack();
+        }
       }
     }
   }

@@ -1,7 +1,8 @@
 #include "enemy.h"
-#include "../wasm4.h"
+#include "../assets/audio.h"
 #include "../assets/sprites.h"
 #include "../core/config.h"
+#include "../wasm4.h"
 
 #include <stdlib.h>
 
@@ -64,6 +65,7 @@ void Enemy_swarm_tracking(GameContext *gc) {
 
         if (Enemy_check_player_collision(enemy, &gc->player)) {
             gc->player.health -= 1;
+            audio_player_damage();
             continue;
         }
 

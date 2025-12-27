@@ -1,5 +1,4 @@
 #include "../assets/sprites.h"
-#include "../core/config.h"
 #include "../entities/rogue.h"
 #include "../wasm4.h"
 #include "screens.h"
