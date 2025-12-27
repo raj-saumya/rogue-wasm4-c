@@ -1,0 +1,22 @@
+#pragma once
+
+#define SCREEN_SIZE 160
+#define FONT_SIZE 8
+
+#define MAX_ENEMIES 16
+#define MAX_WEAPONS 4
+#define MAX_PROJECTILES 32
+#define MAX_BUFFS 8
+
+#define ROGUE_BASE_HEALTH 100
+#define ROGUE_BASE_SPEED 1
+
+#define ENEMY_SPAWN_INTERVAL 60
+#define ENEMY_MOVE_SPEED 14
+#define ENEMY_SEPARATION_DIST 2
+#define ENEMY_BASE_HEALTH 2
+
+#define PROJECTILE_BASE_SPEED 0.2f
+#define PROJECTILE_LIFETIME 240
+
+#define KILLS_PER_LEVEL 8 // Kills needed to level up

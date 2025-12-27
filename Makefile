@@ -29,8 +29,15 @@ else
 	LDFLAGS += -Wl,--strip-all,--gc-sections,--lto-O3 -Oz
 endif
 
-OBJECTS = $(patsubst src/%.c, build/%.o, $(wildcard src/*.c))
-OBJECTS += $(patsubst src/%.cpp, build/%.o, $(wildcard src/*.cpp))
+# Source files from all subdirectories
+SOURCES = $(wildcard src/*.c) \
+          $(wildcard src/core/*.c) \
+          $(wildcard src/assets/*.c) \
+          $(wildcard src/entities/*.c) \
+          $(wildcard src/ui/*.c)
+
+# Object files - preserve directory structure in build/
+OBJECTS = $(patsubst src/%.c, build/%.o, $(SOURCES))
 DEPS = $(OBJECTS:.o=.d)
 
 ifeq '$(findstring ;,$(PATH))' ';'
@@ -63,14 +70,14 @@ else
 endif
 endif
 
-# Compile C sources
+# Compile C sources (handles subdirectories)
 build/%.o: src/%.c
-	@$(MKDIR_BUILD)
+	@mkdir -p $(dir $@)
 	$(CC) -c $< -o $@ $(CFLAGS)
 
 # Compile C++ sources
 build/%.o: src/%.cpp
-	@$(MKDIR_BUILD)
+	@mkdir -p $(dir $@)
 	$(CXX) -c $< -o $@ $(CFLAGS)
 
 .PHONY: clean

@@ -1,4 +1,5 @@
-#include "types.h"
+#include "core/types.h"
+#include "ui/screens.h"
 #include "wasm4.h"
 
 GameContext gc;
@@ -15,12 +16,25 @@ void start() {
 void update() {
   uint8_t gamepad = *GAMEPAD1;
 
-  if (gc.screen_state == GAME_START_SCREEN) {
-    // Game_startScreen(&gc, gamepad);
-    Game_progressScreen(&gc, gamepad);
-  } else if (gc.screen_state == GAME_PROGRESS_SCREEN) {
-    Game_progressScreen(&gc, gamepad);
-  } else if (gc.screen_state == GAME_OVER_SCREEN) {
-    Game_overScreen(&gc, gamepad);
+  switch (gc.screen_state) {
+  case SCREEN_START:
+    Screen_start_update(&gc, gamepad);
+    Screen_start_render(&gc);
+    break;
+
+  case SCREEN_PLAYING:
+    Screen_playing_update(&gc, gamepad);
+    Screen_playing_render(&gc);
+    break;
+
+  case SCREEN_BUFF_SELECT:
+    Screen_buff_update(&gc, gamepad);
+    Screen_buff_render(&gc);
+    break;
+
+  case SCREEN_GAME_OVER:
+    Screen_gameover_update(&gc, gamepad);
+    Screen_gameover_render(&gc);
+    break;
   }
 }
